@@ -6,6 +6,22 @@ It listens for encrypted Victron BLE advertisements, decrypts them locally using
 
 The project vendors the BLE parser logic from [`victron_ble`](https://github.com/keshavdv/victron-ble) and avoids package installs on Venus OS where possible. Advertisement keys are not brute-forced: each key must be retrieved from VictronConnect for a device you own/administer.
 
+## About this fork
+
+This is a fork of [mk4001/VenusOS_BLE](https://github.com/mk4001/VenusOS_BLE). The gateway, its Venus D-Bus mappings and its documentation are MK4001's work; the BLE parser is [keshavdv/victron-ble](https://github.com/keshavdv/victron-ble). This fork adds fixes found while running it against a Blue Smart IP65 12/5 charger on a Raspberry Pi 3B with Venus OS v3.85, each on its own branch and offered upstream as a pull request:
+
+| Branch | Fix |
+|---|---|
+| `fix/rc-local-boot-hook` | The `/data/rc.local` hook was written with broken quoting, so the service did not return after a reboot. |
+| `fix/numeric-state-and-error` | `/State` and `/ErrorCode` were published as strings for many values; Venus OS expects numeric codes. |
+| `fix/charger-output-count` | `/NrOfOutputs` was fixed at 3; it now follows the outputs the charger actually reports. |
+| `fix/clear-values-on-disconnect` | Readings stayed at their last values after a device stopped advertising (upstream issue #3). |
+| `fix/vedbus-register` | Services claimed their D-Bus name before their paths existed. |
+| `fix/clean-shutdown` | The process ignored SIGTERM, so `svc -d` / `svc -t` could not stop it. |
+| `chore/gitignore-and-lf` | Ignore Python caches and the live `config.toml`; keep LF endings for the Venus scripts. |
+
+`main` here is upstream plus those branches.
+
 ## Current Status
 
 Tested on Venus OS 3.70/3.73/3.80-class Raspberry Pi installations with Python 3.12 and no `pip` requirement for the Venus D-Bus path.
