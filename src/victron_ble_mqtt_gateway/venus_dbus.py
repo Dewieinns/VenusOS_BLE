@@ -18,6 +18,7 @@ class VenusDbusBridge:
         self.devices_by_address = {device.normalized_address: device for device in config.devices}
         self.services_by_address: dict[str, Any] = {}
         self.last_seen_by_address: dict[str, float] = {}
+        self.value_paths_by_service: dict[int, list[str]] = {}
         self.mainloop: Any = None
         self.thread: Optional[threading.Thread] = None
         self.GLib: Any = None
@@ -81,6 +82,13 @@ class VenusDbusBridge:
             logger.warning("VeDbusService does not accept a bus parameter; falling back to shared bus")
             return self.VeDbusService(service_name)
 
+    def _add_value_path(self, service: Any, path: str) -> None:
+        # A path that carries a live reading. These are cleared when the device
+        # stops advertising, so a disconnected device does not keep showing its
+        # last values.
+        service.add_path(path, None)
+        self.value_paths_by_service.setdefault(id(service), []).append(path)
+
     def _add_common_paths(self, service: Any, device: DeviceConfig, device_instance: int) -> None:
         service.add_path("/Mgmt/ProcessName", "victron-ble-mqtt-gateway")
         service.add_path("/Mgmt/ProcessVersion", "0.1.0")
@@ -96,11 +104,11 @@ class VenusDbusBridge:
         device_instance = self.config.venus_dbus.device_instance_start + index
         service = self._new_service(service_name)
         self._add_common_paths(service, device, device_instance)
-        service.add_path("/Dc/0/Voltage", None)
-        service.add_path("/Dc/0/Current", None)
-        service.add_path("/Dc/0/Power", None)
-        service.add_path("/Dc/0/Temperature", None)
-        service.add_path("/Soc", None)
+        self._add_value_path(service, "/Dc/0/Voltage")
+        self._add_value_path(service, "/Dc/0/Current")
+        self._add_value_path(service, "/Dc/0/Power")
+        self._add_value_path(service, "/Dc/0/Temperature")
+        self._add_value_path(service, "/Soc")
         service.add_path("/DeviceType", "battery")
         return service
 
@@ -112,17 +120,17 @@ class VenusDbusBridge:
         service.add_path("/DeviceType", "orion_xs")
         service.add_path("/Capabilities/Capabilities1", 0)
         service.add_path("/Mode", 1)
-        service.add_path("/State", None)
-        service.add_path("/ErrorCode", None)
-        service.add_path("/DeviceOffReason", None)
+        self._add_value_path(service, "/State")
+        self._add_value_path(service, "/ErrorCode")
+        self._add_value_path(service, "/DeviceOffReason")
         service.add_path("/Settings/DeviceFunction", 1)
         service.add_path("/Settings/OutputBattery", 0)
-        service.add_path("/Dc/0/Voltage", None)
-        service.add_path("/Dc/0/Current", None)
-        service.add_path("/Dc/0/Power", None)
-        service.add_path("/Dc/In/V", None)
-        service.add_path("/Dc/In/I", None)
-        service.add_path("/Dc/In/P", None)
+        self._add_value_path(service, "/Dc/0/Voltage")
+        self._add_value_path(service, "/Dc/0/Current")
+        self._add_value_path(service, "/Dc/0/Power")
+        self._add_value_path(service, "/Dc/In/V")
+        self._add_value_path(service, "/Dc/In/I")
+        self._add_value_path(service, "/Dc/In/P")
         return service
 
     def _create_solar_charger_service(self, device: DeviceConfig, index: int) -> Any:
@@ -132,15 +140,15 @@ class VenusDbusBridge:
         self._add_common_paths(service, device, device_instance)
         service.add_path("/DeviceType", "solarcharger")
         service.add_path("/Mode", 1)
-        service.add_path("/State", None)
-        service.add_path("/ErrorCode", None)
-        service.add_path("/Dc/0/Voltage", None)
-        service.add_path("/Dc/0/Current", None)
-        service.add_path("/Dc/0/Power", None)
-        service.add_path("/Yield/Power", None)
-        service.add_path("/Yield/User", None)
-        service.add_path("/History/Daily/0/Yield", None)
-        service.add_path("/Load/I", None)
+        self._add_value_path(service, "/State")
+        self._add_value_path(service, "/ErrorCode")
+        self._add_value_path(service, "/Dc/0/Voltage")
+        self._add_value_path(service, "/Dc/0/Current")
+        self._add_value_path(service, "/Dc/0/Power")
+        self._add_value_path(service, "/Yield/Power")
+        self._add_value_path(service, "/Yield/User")
+        self._add_value_path(service, "/History/Daily/0/Yield")
+        self._add_value_path(service, "/Load/I")
         return service
 
     def _create_ac_charger_service(self, device: DeviceConfig, index: int) -> Any:
@@ -150,20 +158,20 @@ class VenusDbusBridge:
         self._add_common_paths(service, device, device_instance)
         service.add_path("/DeviceType", "charger")
         service.add_path("/Mode", 1)
-        service.add_path("/State", None)
-        service.add_path("/ErrorCode", None)
+        self._add_value_path(service, "/State")
+        self._add_value_path(service, "/ErrorCode")
         service.add_path("/NrOfOutputs", 3)
-        service.add_path("/Temperature", None)
-        service.add_path("/Ac/In/1/Current", None)
-        service.add_path("/Dc/0/Voltage", None)
-        service.add_path("/Dc/0/Current", None)
-        service.add_path("/Dc/0/Power", None)
-        service.add_path("/Dc/1/Voltage", None)
-        service.add_path("/Dc/1/Current", None)
-        service.add_path("/Dc/1/Power", None)
-        service.add_path("/Dc/2/Voltage", None)
-        service.add_path("/Dc/2/Current", None)
-        service.add_path("/Dc/2/Power", None)
+        self._add_value_path(service, "/Temperature")
+        self._add_value_path(service, "/Ac/In/1/Current")
+        self._add_value_path(service, "/Dc/0/Voltage")
+        self._add_value_path(service, "/Dc/0/Current")
+        self._add_value_path(service, "/Dc/0/Power")
+        self._add_value_path(service, "/Dc/1/Voltage")
+        self._add_value_path(service, "/Dc/1/Current")
+        self._add_value_path(service, "/Dc/1/Power")
+        self._add_value_path(service, "/Dc/2/Voltage")
+        self._add_value_path(service, "/Dc/2/Current")
+        self._add_value_path(service, "/Dc/2/Power")
         return service
 
     def _check_connected_timeouts(self) -> bool:
@@ -174,6 +182,8 @@ class VenusDbusBridge:
             if last_seen is None or now - last_seen > timeout:
                 if service["/Connected"] != 0:
                     logger.warning("No BLE advertisement from %s for %ss; marking disconnected", address, timeout)
+                    for path in self.value_paths_by_service.get(id(service), []):
+                        service[path] = None
                 service["/Connected"] = 0
         return True
 
